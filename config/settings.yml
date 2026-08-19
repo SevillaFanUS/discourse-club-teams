@@ -1,0 +1,38 @@
+plugins:
+  club_teams_enabled:
+    client: true
+    default: false
+
+  club_teams_api_key:
+    client: false
+    secret: true
+    default: ""
+
+  # "Label:team_id" pairs. Find ids with script/find_teams.rb
+  club_teams_teams:
+    client: false
+    default: ""
+
+  club_teams_topic_id:
+    client: false
+    default: 0
+
+  club_teams_season:
+    client: false
+    default: ""
+
+  club_teams_recent_count:
+    client: false
+    default: 3
+    min: 1
+    max: 10
+
+  club_teams_upcoming_count:
+    client: false
+    default: 2
+    min: 0
+    max: 10
+
+  club_teams_timezone:
+    client: false
+    default: "Europe/Madrid"
