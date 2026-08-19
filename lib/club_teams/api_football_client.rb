@@ -33,9 +33,20 @@ module ::ClubTeams
     # when running against a 100/day free tier.
     attr_reader :last_quota_remaining
 
+    # Why the last call failed, in words. A diagnostic tool that says
+    # "check the log" isn't much of a diagnostic tool.
+    attr_reader :last_error
+
+    # Raw status and body of the last call, for probing.
+    attr_reader :last_status, :last_body
+
     private
 
     def get(path, params = {})
+      @last_error = nil
+      @last_status = nil
+      @last_body = nil
+
       uri = URI("#{BASE_URL}#{path}")
       uri.query = URI.encode_www_form(params)
 
@@ -49,23 +60,30 @@ module ::ClubTeams
 
       response = http.request(request)
       @last_quota_remaining = response["x-ratelimit-requests-remaining"]
+      @last_status = response.code
+      @last_body = response.body.to_s
 
       unless response.is_a?(Net::HTTPSuccess)
-        log("HTTP #{response.code} for #{path}: #{response.body.to_s[0, 200]}")
+        @last_error = "HTTP #{response.code} — #{response.body.to_s[0, 300]}"
+        log("#{path}: #{@last_error}")
         return nil
       end
 
       body = JSON.parse(response.body)
 
+      # A populated "errors" arrives with HTTP 200, so this is a real
+      # failure path, not an edge case.
       errors = body["errors"]
       if errors.is_a?(Hash) && errors.any?
-        log("API error for #{path}: #{errors.inspect}")
+        @last_error = "API rejected the request: #{errors.map { |k, v| "#{k}: #{v}" }.join("; ")}"
+        log("#{path}: #{@last_error}")
         return nil
       end
 
       body["response"]
     rescue => e
-      log("request failed for #{path}: #{e.class}: #{e.message}")
+      @last_error = "#{e.class}: #{e.message}"
+      log("#{path}: #{@last_error}")
       nil
     end
 

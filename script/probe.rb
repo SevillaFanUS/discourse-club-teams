@@ -12,14 +12,33 @@ if team_id.blank?
   exit 1
 end
 
-client = ClubTeams::ApiFootballClient.new(SiteSetting.club_teams_api_key)
+key = SiteSetting.club_teams_api_key.to_s
+if key.empty?
+  puts "club_teams_api_key is not set."
+  exit 1
+end
+puts "key length #{key.length} (not shown)"
+
+client = ClubTeams::ApiFootballClient.new(key)
 season = SiteSetting.club_teams_season.presence ||
   (Time.zone.now.month >= 6 ? Time.zone.now.year : Time.zone.now.year - 1)
+puts "querying team #{team_id}, season #{season}"
+puts
 
 fixtures = client.team_fixtures(team_id: team_id.to_i, season: season.to_i)
 
 if fixtures.nil?
-  puts "Request failed — check the log."
+  puts "FAILED: #{client.last_error}"
+  puts "HTTP status: #{client.last_status.inspect}"
+  puts "Quota left:  #{client.last_quota_remaining.inspect}"
+  puts
+  puts "--- raw body (first 600 chars) ---"
+  puts client.last_body.to_s[0, 600]
+  puts
+  puts "Common causes:"
+  puts "  * key rejected      -> check it at api-sports.io; new keys need the account confirmed"
+  puts "  * quota exhausted   -> free tier is 100 requests/day, resets daily"
+  puts "  * connection error  -> the container could not reach v3.football.api-sports.io"
   exit 1
 end
 

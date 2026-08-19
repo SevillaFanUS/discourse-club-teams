@@ -2,7 +2,7 @@
 
 # name: discourse-club-teams
 # about: Keeps a single topic updated with recent results and upcoming fixtures for a club's other teams — women's side, reserves, youth — using API-Football.
-# version: 0.1.0
+# version: 0.1.1
 # authors: Chris Lail
 # url: https://github.com/SevillaFanUS/discourse-club-teams
 # required_version: 3.0.0
