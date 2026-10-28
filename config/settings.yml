@@ -3,23 +3,29 @@ plugins:
     client: true
     default: false
 
+  # Only needed by providers that require one. ESPN does not.
   club_teams_api_key:
     client: false
     secret: true
     default: ""
 
-  # "Label:team_id" pairs. Find ids with script/find_teams.rb
+  # One team per comma:
+  #   Label|provider|team_id|league;league
+  #
+  #   Femenino|espn|21424|esp.w.1;esp.copa_de_la_reina
+  #
+  # Providers: espn, api_football. Find ids with script/find_teams.rb
   club_teams_teams:
     client: false
-    default: ""
+    default: "Femenino|espn|21424|esp.w.1;esp.copa_de_la_reina"
 
   club_teams_topic_id:
     client: false
     default: 0
 
-  club_teams_season:
+  club_teams_heading:
     client: false
-    default: ""
+    default: "Beyond the first team"
 
   club_teams_recent_count:
     client: false
@@ -32,6 +38,18 @@ plugins:
     default: 2
     min: 0
     max: 10
+
+  club_teams_back_days:
+    client: false
+    default: 150
+    min: 7
+    max: 400
+
+  club_teams_forward_days:
+    client: false
+    default: 90
+    min: 7
+    max: 400
 
   club_teams_timezone:
     client: false

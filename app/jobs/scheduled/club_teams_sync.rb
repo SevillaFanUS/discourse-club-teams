@@ -3,9 +3,11 @@
 require "digest"
 
 module ::Jobs
-  # Refreshes the other-teams post. One API request per configured team
-  # per run; at four runs a day with three teams that's 12 of the free
-  # tier's 100.
+  # Refreshes the other-teams post.
+  #
+  # One request per league per team per run. ESPN publishes no rate
+  # limit but asks for restraint, so the default six-hour cadence with
+  # two leagues is deliberately modest.
   class ClubTeamsSync < ::Jobs::Scheduled
     every 6.hours
 
@@ -16,33 +18,31 @@ module ::Jobs
     end
 
     def self.sync!
-      return :not_configured if SiteSetting.club_teams_api_key.blank?
       return :no_topic if SiteSetting.club_teams_topic_id.to_i <= 0
 
-      teams = parse_teams
-      return :no_teams if teams.empty?
+      specs = ::ClubTeams::TeamSpec.parse_all(SiteSetting.club_teams_teams)
+      return :no_teams if specs.empty?
 
       topic = Topic.find_by(id: SiteSetting.club_teams_topic_id.to_i, deleted_at: nil)
       if topic.nil?
-        Rails.logger.warn("[#{::ClubTeams::PLUGIN_NAME}] topic #{SiteSetting.club_teams_topic_id} not found")
+        Rails.logger.warn(
+          "[#{::ClubTeams::PLUGIN_NAME}] topic #{SiteSetting.club_teams_topic_id} not found",
+        )
         return :no_topic
       end
 
-      season = resolved_season
-      client = ::ClubTeams::ApiFootballClient.new(SiteSetting.club_teams_api_key)
+      fetched = specs.map { |spec| fetch(spec) }
 
-      fetched =
-        teams.map do |team|
-          fixtures = client.team_fixtures(team_id: team[:id], season: season)
-          { label: team[:label], id: team[:id], fixtures: fixtures || [] }
-        end
-
-      # A total wipeout — every team failed — is far more likely to be a
-      # bad key or exhausted quota than genuinely empty seasons. Leave
-      # the existing post alone rather than replacing it with "nothing
-      # found".
-      if fetched.all? { |t| t[:fixtures].empty? }
-        Rails.logger.warn("[#{::ClubTeams::PLUGIN_NAME}] no fixtures for any team; leaving post untouched")
+      # A total wipeout is far more likely to be a broken key, an
+      # exhausted quota or an outage than every season genuinely being
+      # empty. Replacing a good post with "nothing found" would be worse
+      # than doing nothing, so leave it alone.
+      if fetched.all? { |team| team[:fixtures].empty? }
+        reasons = fetched.filter_map { |team| team[:error] }.uniq
+        Rails.logger.warn(
+          "[#{::ClubTeams::PLUGIN_NAME}] no fixtures for any team; leaving post untouched" +
+            (reasons.any? ? " (#{reasons.join("; ")})" : ""),
+        )
         return :no_data
       end
 
@@ -51,11 +51,44 @@ module ::Jobs
           fetched,
           recent_count: SiteSetting.club_teams_recent_count.to_i,
           upcoming_count: SiteSetting.club_teams_upcoming_count.to_i,
-          timezone: SiteSetting.club_teams_timezone.presence || "Europe/Madrid",
-          season_label: season_label(season),
+          timezone: timezone,
+          heading: SiteSetting.club_teams_heading.presence,
         ).render
 
       publish(topic, body)
+    end
+
+    def self.fetch(spec)
+      provider =
+        ::ClubTeams::ProviderRegistry.build(spec.provider, api_key: SiteSetting.club_teams_api_key)
+
+      if provider.nil?
+        return {
+          label: spec.label,
+          id: spec.id,
+          fixtures: [],
+          error: "unknown provider '#{spec.provider}' for #{spec.label}",
+        }
+      end
+
+      fixtures =
+        provider.fixtures(
+          team_id: spec.id,
+          leagues: spec.leagues,
+          back_days: SiteSetting.club_teams_back_days.to_i,
+          forward_days: SiteSetting.club_teams_forward_days.to_i,
+        )
+
+      {
+        label: spec.label,
+        id: spec.id,
+        fixtures: fixtures || [],
+        error: fixtures.nil? ? "#{spec.label}: #{provider.last_error}" : nil,
+      }
+    end
+
+    def self.timezone
+      SiteSetting.club_teams_timezone.presence || "Europe/Madrid"
     end
 
     def self.publish(topic, body)
@@ -98,35 +131,6 @@ module ::Jobs
         "post",
         { "post_id" => post_id, "digest" => fingerprint },
       )
-    end
-
-    # "Femenino:1234, Sevilla Atlético:5678"
-    #
-    # Split on the LAST colon: a label may legitimately contain one
-    # ("Femenino: Liga F"), but the id is always the trailing segment.
-    def self.parse_teams
-      SiteSetting.club_teams_teams.to_s.split(",").filter_map do |pair|
-        index = pair.rindex(":")
-        next if index.nil?
-
-        label = pair[0...index].strip
-        id = pair[(index + 1)..].to_s.strip
-        next if label.empty? || id.to_i <= 0
-
-        { label: label, id: id.to_i }
-      end
-    end
-
-    def self.resolved_season
-      override = SiteSetting.club_teams_season
-      return override.to_i if override.present?
-
-      now = Time.zone.now
-      now.month >= 6 ? now.year : now.year - 1
-    end
-
-    def self.season_label(season)
-      "#{season}/#{(season + 1).to_s[-2..]}"
     end
   end
 end

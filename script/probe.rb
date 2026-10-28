@@ -1,63 +1,67 @@
 # frozen_string_literal: true
 
-# Dumps one raw fixture from the API so the response shape can be
-# verified against what this plugin expects, rather than assumed.
+# Confirms a team really has data before you trust the post.
 #
-#   su discourse -c "RAILS_ENV=production bin/rails runner \
-#     plugins/discourse-club-teams/script/probe.rb <team_id>"
+#   bin/rails runner plugins/discourse-club-teams/script/probe.rb espn 21424 esp.w.1
+#   bin/rails runner plugins/discourse-club-teams/script/probe.rb 21424
+#
+# Prints the exact fields the digest reads. A nil where a value is
+# expected means the provider's shape has drifted.
 
-team_id = ARGV[0]
-if team_id.blank?
-  puts "Usage: probe.rb <team_id>   (find ids with find_teams.rb)"
+args = ARGV.dup
+provider_name = ::ClubTeams::ProviderRegistry.known?(args.first) ? args.shift : "espn"
+team_id = args.shift
+leagues = args.flat_map { |a| a.split(",") }.map(&:strip).reject(&:empty?)
+
+if team_id.to_s.empty?
+  puts "Usage: probe.rb [provider] <team_id> [league,league]"
+  puts "Providers: #{::ClubTeams::ProviderRegistry.names.join(", ")}"
   exit 1
 end
 
-key = SiteSetting.club_teams_api_key.to_s
-if key.empty?
-  puts "club_teams_api_key is not set."
-  exit 1
-end
-puts "key length #{key.length} (not shown)"
+provider = ::ClubTeams::ProviderRegistry.build(provider_name, api_key: SiteSetting.club_teams_api_key)
 
-client = ClubTeams::ApiFootballClient.new(key)
-season = SiteSetting.club_teams_season.presence ||
-  (Time.zone.now.month >= 6 ? Time.zone.now.year : Time.zone.now.year - 1)
-puts "querying team #{team_id}, season #{season}"
+puts "provider:  #{provider_name}"
+puts "team id:   #{team_id}"
+puts "leagues:   #{leagues.any? ? leagues.join(", ") : "(provider default)"}"
+puts "key set:   #{SiteSetting.club_teams_api_key.to_s.empty? ? "no" : "yes"}"
 puts
 
-fixtures = client.team_fixtures(team_id: team_id.to_i, season: season.to_i)
+fixtures = provider.fixtures(team_id: team_id, leagues: leagues)
 
 if fixtures.nil?
-  puts "FAILED: #{client.last_error}"
-  puts "HTTP status: #{client.last_status.inspect}"
-  puts "Quota left:  #{client.last_quota_remaining.inspect}"
-  puts
-  puts "--- raw body (first 600 chars) ---"
-  puts client.last_body.to_s[0, 600]
+  puts "FAILED: #{provider.last_error}"
   puts
   puts "Common causes:"
-  puts "  * key rejected      -> check it at api-sports.io; new keys need the account confirmed"
-  puts "  * quota exhausted   -> free tier is 100 requests/day, resets daily"
-  puts "  * connection error  -> the container could not reach v3.football.api-sports.io"
+  puts "  * wrong league slug   -> ESPN returns an empty body for slugs it does not carry"
+  puts "  * key rejected        -> api_football only; check it at api-sports.io"
+  puts "  * out-of-plan season  -> api_football free plans cannot serve the current season"
+  puts "  * connection error    -> the container could not reach the provider"
   exit 1
 end
 
-puts "season #{season}: #{fixtures.size} fixture(s), quota left #{client.last_quota_remaining || "?"}"
-puts
-
-sample = fixtures.first
-if sample.nil?
-  puts "No fixtures returned. Wrong season, or the team isn't covered."
+if fixtures.empty?
+  puts "The request worked but no fixtures matched team #{team_id}."
+  puts "Either the id belongs to another club, or nothing falls inside the date window."
   exit 0
 end
 
-puts "Fields this plugin reads:"
-puts "  fixture.date          #{sample.dig("fixture", "date").inspect}"
-puts "  fixture.status.short  #{sample.dig("fixture", "status", "short").inspect}"
-puts "  league.name           #{sample.dig("league", "name").inspect}"
-puts "  teams.home.name       #{sample.dig("teams", "home", "name").inspect}"
-puts "  teams.home.winner     #{sample.dig("teams", "home", "winner").inspect}"
-puts "  teams.away.name       #{sample.dig("teams", "away", "name").inspect}"
-puts "  goals.home / away     #{sample.dig("goals", "home").inspect} / #{sample.dig("goals", "away").inspect}"
+played = fixtures.select(&:played?)
+upcoming = fixtures.reject { |f| f.played? || f.called_off? }
+
+puts "#{fixtures.size} fixtures — #{played.size} played, #{upcoming.size} upcoming"
 puts
-puts "Any nil above means the shape differs and the digest needs adjusting."
+
+(played.last(3) + upcoming.first(3)).each do |f|
+  puts "  kickoff:     #{f.kickoff.inspect}"
+  puts "  state:       #{f.state}"
+  puts "  home:        #{f.home_name.inspect} (#{f.home_id}) #{f.home_score.inspect}"
+  puts "  away:        #{f.away_name.inspect} (#{f.away_id}) #{f.away_score.inspect}"
+  puts "  competition: #{f.competition.inspect}"
+  puts "  outcome:     #{f.outcome_for(team_id).inspect}"
+  puts "  url:         #{f.url.inspect}"
+  puts
+end
+
+blank = fixtures.count { |f| f.home_name.empty? || f.away_name.empty? || f.kickoff.nil? }
+puts blank.zero? ? "No missing fields." : "WARNING: #{blank} fixtures are missing a name or a kickoff time."

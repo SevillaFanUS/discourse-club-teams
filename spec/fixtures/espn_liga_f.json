@@ -1,0 +1,109 @@
+{
+  "_note": "Field-for-field reconstruction of a real ESPN esp.w.1 scoreboard response. Values for the Madrid CFF fixture are verbatim from the live API on 2026-05-11; the other events vary one thing each to exercise a branch.",
+  "events": [
+    {
+      "id": "749204",
+      "date": "2026-05-11T17:00Z",
+      "name": "Sevilla at Madrid CFF",
+      "competitions": [
+        {
+          "date": "2026-05-11T17:00Z",
+          "altGameNote": "Liga F",
+          "status": { "type": { "id": "28", "name": "STATUS_FULL_TIME", "state": "post", "completed": true, "detail": "FT" } },
+          "competitors": [
+            { "id": "21425", "homeAway": "home", "winner": true, "score": "2", "team": { "id": "21425", "displayName": "Madrid CFF" } },
+            { "id": "21424", "homeAway": "away", "winner": false, "score": "0", "team": { "id": "21424", "displayName": "Sevilla" } }
+          ]
+        }
+      ],
+      "links": [
+        { "rel": ["summary", "desktop", "event"], "href": "https://www.espn.com/soccer/match/_/gameId/749204/sevilla-madrid-cff" }
+      ]
+    },
+    {
+      "id": "749100",
+      "date": "2026-05-04T16:00Z",
+      "name": "Granada at Sevilla",
+      "competitions": [
+        {
+          "date": "2026-05-04T16:00Z",
+          "altGameNote": "Liga F",
+          "status": { "type": { "id": "28", "name": "STATUS_FULL_TIME", "state": "post", "completed": true, "detail": "FT" } },
+          "competitors": [
+            { "id": "21424", "homeAway": "home", "winner": true, "score": "3", "team": { "id": "21424", "displayName": "Sevilla" } },
+            { "id": "21140", "homeAway": "away", "winner": false, "score": "1", "team": { "id": "21140", "displayName": "Granada" } }
+          ]
+        }
+      ],
+      "links": []
+    },
+    {
+      "id": "749050",
+      "date": "2026-04-26T11:00Z",
+      "name": "Sevilla at Eibar",
+      "competitions": [
+        {
+          "date": "2026-04-26T11:00Z",
+          "altGameNote": "Liga F",
+          "status": { "type": { "id": "28", "name": "STATUS_FULL_TIME", "state": "post", "completed": true, "detail": "FT" } },
+          "competitors": [
+            { "id": "21376", "homeAway": "home", "winner": false, "score": "1", "team": { "id": "21376", "displayName": "Eibar" } },
+            { "id": "21424", "homeAway": "away", "winner": false, "score": "1", "team": { "id": "21424", "displayName": "Sevilla" } }
+          ]
+        }
+      ],
+      "links": []
+    },
+    {
+      "id": "401882538",
+      "date": "2026-08-30T18:00Z",
+      "name": "Sevilla at Deportivo La Coruna",
+      "competitions": [
+        {
+          "date": "2026-08-30T18:00Z",
+          "altGameNote": "Liga F",
+          "status": { "type": { "id": "1", "name": "STATUS_SCHEDULED", "state": "pre", "completed": false, "detail": "TBD" } },
+          "competitors": [
+            { "id": "21145", "homeAway": "home", "winner": false, "score": "0", "team": { "id": "21145", "displayName": "Deportivo La Coruna" } },
+            { "id": "21424", "homeAway": "away", "winner": false, "score": "0", "team": { "id": "21424", "displayName": "Sevilla" } }
+          ]
+        }
+      ],
+      "links": []
+    },
+    {
+      "id": "401882600",
+      "date": "2026-09-06T16:00Z",
+      "name": "Barcelona at Sevilla",
+      "competitions": [
+        {
+          "date": "2026-09-06T16:00Z",
+          "altGameNote": "Liga F",
+          "status": { "type": { "id": "6", "name": "STATUS_POSTPONED", "state": "pre", "completed": false, "detail": "Postponed" } },
+          "competitors": [
+            { "id": "21424", "homeAway": "home", "winner": false, "score": "0", "team": { "id": "21424", "displayName": "Sevilla" } },
+            { "id": "20091", "homeAway": "away", "winner": false, "score": "0", "team": { "id": "20091", "displayName": "Barcelona" } }
+          ]
+        }
+      ],
+      "links": []
+    },
+    {
+      "id": "401882534",
+      "date": "2026-08-30T18:00Z",
+      "name": "Atletico Madrid at Real Madrid",
+      "competitions": [
+        {
+          "date": "2026-08-30T18:00Z",
+          "altGameNote": "Liga F",
+          "status": { "type": { "id": "1", "name": "STATUS_SCHEDULED", "state": "pre", "completed": false, "detail": "TBD" } },
+          "competitors": [
+            { "id": "21128", "homeAway": "home", "winner": false, "score": "0", "team": { "id": "21128", "displayName": "Real Madrid" } },
+            { "id": "20093", "homeAway": "away", "winner": false, "score": "0", "team": { "id": "20093", "displayName": "Atletico Madrid" } }
+          ]
+        }
+      ],
+      "links": []
+    }
+  ]
+}

@@ -1,16 +1,24 @@
 # frozen_string_literal: true
 
-# Refreshes the post immediately instead of waiting for the six-hourly job.
+# Publishes or refreshes the post immediately, without waiting for the
+# scheduled job.
 #
-#   su discourse -c "RAILS_ENV=production bin/rails runner \
-#     plugins/discourse-club-teams/script/sync_now.rb"
+#   bin/rails runner plugins/discourse-club-teams/script/sync_now.rb
 
-result = Jobs::ClubTeamsSync.sync!
+unless SiteSetting.club_teams_enabled
+  puts "club_teams_enabled is off — turn it on first."
+  exit 1
+end
+
+result = ::Jobs::ClubTeamsSync.sync!
+
 puts "result: #{result}"
 
 case result
-when :not_configured then puts "Set club_teams_api_key."
-when :no_topic       then puts "Set club_teams_topic_id to an existing topic."
-when :no_teams       then puts "Set club_teams_teams, e.g. \"Femenino:1234,Sevilla Atlético:5678\"."
-when :no_data        then puts "No fixtures came back — check the key, quota, and team ids."
+when :created  then puts "Posted for the first time."
+when :updated  then puts "Existing post edited in place."
+when :unchanged then puts "Nothing changed since the last run; post left alone."
+when :no_topic then puts "Set club_teams_topic_id to a real topic."
+when :no_teams then puts "club_teams_teams is empty or unparseable."
+when :no_data  then puts "Every team came back empty — see the log for why. Post left alone."
 end
